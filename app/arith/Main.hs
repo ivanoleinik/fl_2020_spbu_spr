@@ -1,6 +1,6 @@
 module Main where 
 
-import Arith (evaluate, parseNum, parseOp, parseExpr, Operator (..), AST (..), toPostfix, fromPostfix)
+import Arith (evaluate, parseTerm, parseOp, parseExpr, Operator (..), AST (..), toPostfix, fromPostfix)
 import Text.Printf (printf )
 
 fm0 :: String 
@@ -19,7 +19,7 @@ run' :: String -> IO ()
 run' input = do 
   putStrLn "" 
   putStrLn $ printf "Input:\t%s" input 
-  putStrLn $ printf "Output:\t%s" (show $ parseNum input)
+  putStrLn $ printf "Output:\t%s" (show $ parseTerm input)
 
 
 

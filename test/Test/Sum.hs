@@ -1,7 +1,7 @@
 module Test.Sum where 
 
 import Test.HUnit (Assertion, (@?=))
-import Sum (evaluate, parseNum, splitOn)
+import Sum (evaluate, parseTerm, splitOn)
 
 unit_evaluation :: Assertion 
 unit_evaluation = do 
@@ -11,11 +11,11 @@ unit_evaluation = do
     evaluate "13+42+777" @?= 832
     evaluate "31+24+777" @?= 832
 
-unit_parseNum :: Assertion 
-unit_parseNum = do 
-    parseNum "1" @?= 1
-    parseNum "42" @?= 42
-    parseNum "123" @?= 123 
+unit_parseTerm :: Assertion 
+unit_parseTerm = do 
+    parseTerm "1" @?= 1
+    parseTerm "42" @?= 42
+    parseTerm "123" @?= 123 
 
 unit_splitOn :: Assertion 
 unit_splitOn = do 

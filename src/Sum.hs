@@ -8,10 +8,10 @@ import Data.Char (digitToInt)
 -- "11+22" --> 13
 evaluate :: String -> Int 
 evaluate = 
-    sum . map parseNum . splitOn '+' 
+    sum . map parseTerm . splitOn '+'
 
-parseNum :: String -> Int 
-parseNum = 
+parseTerm :: String -> Int
+parseTerm =
     foldl (\acc d -> 10 * acc + digitToInt d) 0
 
 splitOn :: Eq a => a -> [a] -> [[a]]

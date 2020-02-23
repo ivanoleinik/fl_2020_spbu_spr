@@ -1,7 +1,7 @@
 module Test.Arith where 
 
 import Test.HUnit (Assertion, (@?=))
-import Arith (evaluate, parseNum, parseOp, parseSum, parseMult, Operator (..), AST (..), toPostfix, fromPostfix)
+import Arith (evaluate, parseTerm, parseOp, parseSum, parseMult, Operator (..), AST (..), toPostfix, fromPostfix)
 
 unit_evaluate :: Assertion 
 unit_evaluate = do 
@@ -20,13 +20,13 @@ unit_evaluate = do
     evaluate "12+(23*(34)+456)" @?= Just (12+(23*(34)+456))
     evaluate "((1-(2*3))+4)" @?= Just ((1-(2*3))+4)
 
-unit_parseNum :: Assertion 
-unit_parseNum = do 
-    parseNum "7" @?= Just (Num 7, "")
-    parseNum "12+3" @?= Just (Num 12, "+3")
-    parseNum "007" @?= Just (Num 7, "")
-    parseNum "+3" @?= Nothing 
-    parseNum "a" @?= Nothing 
+unit_parseTerm :: Assertion 
+unit_parseTerm = do 
+    parseTerm "7" @?= Just (Num 7, "")
+    parseTerm "12+3" @?= Just (Num 12, "+3")
+    parseTerm "007" @?= Just (Num 7, "")
+    parseTerm "+3" @?= Nothing 
+    parseTerm "a" @?= Nothing 
 
 unit_parseOp :: Assertion 
 unit_parseOp = do 
