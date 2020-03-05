@@ -50,6 +50,30 @@ initial text={}
 
 \begin{enumerate}
   \item Доказать или опровергнуть утверждение: произведение двух минимальных автоматов всегда дает минимальный автомат (рассмотреть случаи для пересечения, объединения и разности языков).
+  \begin{solution}\
+  \\\texttt{Ответ:} утверждение неверно.\\
+  Рассмотрим автоматы:
+  \begin{enumerate}
+  \item 
+  \begin{myauto}
+  	\node[state,initial]		 (q_0) 				 	 {$q_0$};
+  	\node[state,accepting]		 (q_1)    [right=of q_0] {$q_1$};
+  
+  \path[->] (q_0) edge  [bend left = 15] node [above] {$a$}           (q_1)
+  			(q_1) edge  [bend left = 15] node [below] {$a$}			  (q_0);
+  \end{myauto}
+  \item 
+  \begin{myauto}
+  	\node[state,initial,accepting] (s_0) 				 {$s_0$};
+  	\node[state]		 		   (s_1)  [right=of q_0] {$s_1$};
+  
+  \path[->] (q_0) edge  [bend left = 15] node [above] {$a$}           (s_1)
+  			(q_1) edge  [bend left = 15] node [below] {$a$}			  (s_0);
+  \end{myauto}
+  В их произведении без недостижимых вершин будет всего две вершины: $(q_0, s_0)$ и $(q_1, s_1)$, но в случае их пересечения минимальный автомат будет состоять из одной ничего не допускающей вершины, а в случае объединения -- из одной вершины, допускающей все. (В обоих случаях из вершины в себя есть петля). Для опровержения утверждения в случае разности рассмотрим 2 автомата типа (a): их произведение -- автомат типа (a), а минимальный автомат, как и в случае с пересечением будет состоять из одной вершины, которая все не допускает.
+  \end{enumerate}
+  
+  \end{solution}
   \item Для регулярного выражения:
    \[ (a \mid b)^+ (aa \mid bb \mid abab \mid baba)^* (a \mid b)^+\]
   Построить эквивалентные:
@@ -87,7 +111,6 @@ initial text={}
               		edge 				  node [above] {$a, b$} 		   (q_10);
 	\end{myauto}
 	\end{solution}
-	\pagebreak
     \item Недетерминированный конечный автомат без $\varepsilon$-переходов
     \begin{solution}
     Заметим, что \[ (a \mid b)^+ (aa \mid bb \mid abab \mid baba)^* (a \mid b)^+\] это в точности \[ (a \mid b)^+ (a \mid b)^+,\] поэтому недетерминированный конечный автомат без $\varepsilon$-переходов выглядит так:
@@ -115,6 +138,7 @@ initial text={}
 		\end{myauto}
     \end{solution}
   \end{enumerate}
+  \pagebreak
   \item Построить регулярное выражение, распознающее тот же язык, что и автомат:
   \begin{myauto}
     \node[state]           (q_2)                {$q_2$};
@@ -138,7 +162,6 @@ initial text={}
   \begin{solution}
   	\[ (a \mid b \mid c)^* ((a (b \mid c)^* a) \mid (b (a \mid c)^* b) \mid (c (a \mid b)^* c)) \]
   \end{solution}
-  \pagebreak
   \begin{lemm}[обратная формулировка леммы о накачке]\ 
  	\\Если для языка $L$ над алфавитом $V$ имеет место:\\ $\displaystyle \forall n\in \mathbb {N}$ $\exists \alpha \in L\colon |\alpha |\geqslant n$, $\forall u,v,w\in V^{*}\colon (\alpha =uvw) \land (|v|\geqslant 1) \land (|uv|\leqslant n)$ $\exists i\in \mathbb {N} \cup \{0\} \colon$ $uv^{i}w\not \in L$, то язык $L$ -- неавтоматный.
   \end{lemm}
