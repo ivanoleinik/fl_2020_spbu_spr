@@ -148,7 +148,7 @@ initial text={}
   \end{solution}
   \item Определить, является ли автоматным язык $\{ u a a v \mid u, v \in \{ a, b \}^* , |u|_b \geq |v|_a \}$. Если является --- построить автомат, иначе --- доказать.
   \begin{solution}
-  	Пусть $L$ -- язык из условия. Докажем с помощью леммы, что $L$ неавтоматный. По данному $n$ возьмем слово $\alpha = b^naab^na^n \in L$. $(\alpha =uvw) \land (|v|\geqslant 1) \land (|uv|\leqslant n) \Rightarrow v = b^k$, где $k > 0$. При $i = 0$: $uv^iw = uw = b^{n - k}aab^na^n \not \in L$, так как $n - k < n$.
+  	Пусть $L$ -- язык из условия. Докажем с помощью леммы, что $L$ неавтоматный. По данному $n$ возьмем слово $\alpha = b^naa(ba)^n \in L$. $(\alpha =uvw) \land (|v|\geqslant 1) \land (|uv|\leqslant n) \Rightarrow v = b^k$, где $k > 0$. При $i = 0$: $uv^iw = uw = b^{n - k}aa(ba)^n \not \in L$, так как $n - k < n$.
   \end{solution}
 \end{enumerate}
 
