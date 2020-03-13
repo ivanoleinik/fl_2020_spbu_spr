@@ -68,6 +68,7 @@ toOperator '+' = success Plus
 toOperator '*' = success Mult
 toOperator '-' = success Minus
 toOperator '/' = success Div
+toOperator '^' = success Pow
 toOperator _   = fail' "Failed toOperator"
 
 evaluate :: String -> Maybe Int
@@ -82,4 +83,4 @@ compute (BinOp Plus x y)  = compute x + compute y
 compute (BinOp Mult x y)  = compute x * compute y
 compute (BinOp Minus x y) = compute x - compute y
 compute (BinOp Div x y)   = compute x `div` compute y
-
+compute (BinOp Pow x y)   = compute x ^ compute y
