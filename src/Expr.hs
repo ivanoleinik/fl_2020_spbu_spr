@@ -72,7 +72,8 @@ parseNum = foldl ev 0 <$> go
     ev acc '-' = -acc
     ev acc x   = 10 * acc + digitToInt x
     go :: Parser String String String
-    go = some (satisfy isDigit) <|> ((flip (++)) <$> many (symbol '-') <*> some (satisfy isDigit))
+    go = some (satisfy isDigit) <|>
+         flip (++) <$> many (symbol '-') <*> some (satisfy isDigit)
 
 parseIdent :: Parser String String String
 parseIdent = do
@@ -113,9 +114,26 @@ evaluate input = do
     Success rest ast | null rest -> return $ compute ast
     _                            -> Nothing
 
+boolToInt :: Bool -> Int
+boolToInt True = 1
+boolToInt _    = 0
+
 compute :: AST -> Int
 compute (Num x)           = x
 compute (BinOp Plus x y)  = compute x + compute y
 compute (BinOp Mult x y)  = compute x * compute y
 compute (BinOp Minus x y) = compute x - compute y
 compute (BinOp Div x y)   = compute x `div` compute y
+compute (BinOp Pow x y)   = compute x ^ compute y
+compute (BinOp Equal x y)  = boolToInt $ compute x == compute y
+compute (BinOp Nequal x y) = boolToInt $ compute x /= compute y
+compute (BinOp Le x y)     = boolToInt $ compute x <= compute y
+compute (BinOp Gt x y)     = boolToInt $ compute x < compute y
+compute (BinOp Ge x y)     = boolToInt $ compute x >= compute y
+compute (BinOp Lt x y)     = boolToInt $ compute x > compute y
+compute (BinOp And x y)    = case compute x of
+                                0 -> 0
+                                _ -> compute y
+compute (BinOp Or x y)     = case compute x of
+                                0 -> compute y
+                                x -> x

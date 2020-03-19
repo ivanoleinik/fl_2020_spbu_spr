@@ -1,7 +1,8 @@
 module Test.Expr where
 
 import AST (AST (..), Operator (..))
-import Combinators (Parser (..), Result (..), runParser, symbol, symbols)
+import Combinators (Parser (..), Result (..), runParser,
+                    symbol, symbols)
 import Control.Applicative ((<|>))
 import Expr (Associativity (..), evaluate, parseExpr,
              parseNum, parseOp, toOperator, uberExpr, parseIdent)
@@ -34,17 +35,23 @@ unit_parseNum = do
     runParser parseNum "7" @?= Success "" 7
     runParser parseNum "12+3" @?= Success "+3" 12
     runParser parseNum "007" @?= Success "" 7
-    isFailure (runParser parseNum "+3") @?= True
-    isFailure (runParser parseNum "a") @?= True
+    assertBool "" $ isFailure (runParser parseNum "+3")
+    assertBool "" $ isFailure (runParser parseNum "a")
 
 unit_parseNegNum :: Assertion
 unit_parseNegNum = do
     runParser parseNum "123" @?= Success "" 123
     runParser parseNum "-123" @?= Success "" (-123)
     runParser parseNum "--123" @?= Success "" 123
+    runParser parseNum "-0" @?= Success "" 0
+    runParser parseNum "--0" @?= Success "" 0
+    runParser parseNum "-0-" @?= Success "-" 0
     assertBool "" $ isFailure $ runParser parseNum "+-3"
     assertBool "" $ isFailure $ runParser parseNum "-+3"
     assertBool "" $ isFailure $ runParser parseNum "-a"
+    assertBool "" $ isFailure $ runParser parseNum "--(1)-2"
+    assertBool "" $ isFailure $ runParser parseNum "-"
+    assertBool "" $ isFailure $ runParser parseNum "--"
 
 unit_parseIdent :: Assertion
 unit_parseIdent = do
@@ -56,17 +63,24 @@ unit_parseIdent = do
     runParser parseIdent "abc123" @?= Success "" "abc123"
     runParser parseIdent "_" @?= Success "" "_"
     runParser parseIdent "abc*1" @?= Success "*1" "abc"
+    runParser parseIdent "whozdes'" @?= Success "\'" "whozdes"
+    runParser parseIdent "mem_239" @?= Success "" "mem_239"
+    runParser parseIdent "nagibator228" @?= Success "" "nagibator228"
+    runParser parseIdent "vodka-pivo" @?= Success "-pivo" "vodka"
     assertBool "" $ isFailure $ runParser parseIdent "123abc"
     assertBool "" $ isFailure $ runParser parseIdent "123"
     assertBool "" $ isFailure $ runParser parseIdent ""
+    assertBool "" $ isFailure $ runParser parseIdent "123lol456kek7890"
 
 unit_parseOp :: Assertion
 unit_parseOp = do
-    runParser parseOp "+1" @?= Success "1" Plus
-    runParser parseOp "**" @?= Success "*" Mult
-    runParser parseOp "-2" @?= Success "2" Minus
-    runParser parseOp "/1" @?= Success "1" Div
-    isFailure (runParser parseOp "12") @?= True
+    runParser parseOp "+1"  @?= Success "1" Plus
+    runParser parseOp "**"  @?= Success "*" Mult
+    runParser parseOp "-2"  @?= Success "2" Minus
+    runParser parseOp "/1"  @?= Success "1" Div
+    runParser parseOp "==c" @?= Success "c" Equal
+    runParser parseOp "||1" @?= Success "1" Or
+    assertBool "" $ isFailure (runParser parseOp "12")
 
 unit_parseExpr :: Assertion
 unit_parseExpr = do
@@ -94,6 +108,26 @@ unit_parseExpr = do
     runParser parseExpr "1||x" @?= Success "" (BinOp Or (Num 1) (Ident "x"))
     runParser parseExpr "(1==x+2)||3*4<y-5/6&&(7/=z^8)||(id>12)&&abc<=13||xyz>=42" @?=
       runParser parseExpr "(1==(x+2))||(((3*4)<(y-(5/6))&&(7/=(z^8)))||(((id>12)&&(abc<=13))||(xyz>=42)))"
+    runParser parseExpr "1^2" @?= Success "" (BinOp Pow (Num 1) (Num 2))
+    runParser parseExpr "3^2*4" @?= Success "" (BinOp Mult (BinOp Pow (Num 3) (Num 2)) (Num 4))
+    runParser parseExpr "who||1" @?= Success "" (BinOp Or (Ident "who") (Num 1))
+    runParser parseExpr "bla-bla-car&&(eto||ne||reklama)" @?= Success ""
+                                                                (BinOp And
+                                                                  (BinOp Minus
+                                                                    (BinOp Minus
+                                                                      (Ident "bla")
+                                                                      (Ident "bla")
+                                                                    )
+                                                                    (Ident "car")
+                                                                  )
+                                                                  (BinOp Or
+                                                                    (Ident "eto")
+                                                                    (BinOp Or
+                                                                      (Ident "ne")
+                                                                      (Ident "reklama")
+                                                                    )
+                                                                  )
+                                                                )
 
 mult  = symbols "*" >>= toOperator
 sum'  = symbols "+" >>= toOperator
@@ -129,7 +163,7 @@ unit_expr1 = do
 unit_expr2 :: Assertion
 unit_expr2 = do
   runParser expr2 "13" @?= Success "" (Num 13)
-  runParser expr2 "(((1)))" @?= Failure ""
+  assertBool "" $ isFailure $ runParser expr2 "(((1)))"
   runParser expr2 "1+2*3-4/5" @?= Success "" (BinOp Div (BinOp Minus (BinOp Mult (BinOp Plus (Num 1) (Num 2)) (Num 3)) (Num 4)) (Num 5))
   runParser expr2 "1+2+3" @?= Success "" (BinOp Plus (BinOp Plus (Num 1) (Num 2)) (Num 3))
   runParser expr2 "1*2*3" @?= Success "" (BinOp Mult (BinOp Mult (Num 1) (Num 2)) (Num 3))

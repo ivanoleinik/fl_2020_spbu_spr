@@ -47,4 +47,3 @@ instance Show AST where
           Ident x -> x
           Num i -> show i
       ident = (+1)
-
