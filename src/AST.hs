@@ -29,7 +29,7 @@ instance Show Operator where
   show Mult   = "*"
   show Minus  = "-"
   show Div    = "/"
-  show Equal  = "="
+  show Equal  = "=="
   show Pow    = "^"
   show Nequal = "/="
   show Gt     = ">"
