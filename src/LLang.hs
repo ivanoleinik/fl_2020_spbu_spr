@@ -5,7 +5,7 @@ import Combinators (Parser (..), Result (..), elem', fail',
                     satisfy, success, symbol, symbols)
 import Expr (Associativity (..), OpType (..), parseNum,
              toOperator, parseOp, uberExpr)
-import Data.Char (isDigit, isLetter)
+import Data.Char (isDigit, isLetter, isSpace)
 import Control.Applicative
 import Control.Monad (guard)
 import Data.Maybe
@@ -87,50 +87,63 @@ parseExpr' = uberExpr [ (or', Binary RightAssoc)
                       BinOp
                       UnaryOp
 
+someSpaces = some $ satisfy isSpace
+manySpaces = many $ satisfy isSpace
+
+parseVar' = do
+  someSpaces
+  var <- parseVar
+  return var
+
+parseExpr'' = do
+  manySpaces
+  symbol '('
+  manySpaces
+  expr <- parseExpr'
+  manySpaces
+  symbol ')'
+  return expr
+
 parseIf :: Parser String String LAst
 parseIf = do
-  symbols "if("
-  expr <- parseExpr'
-  symbols ")"
+  symbols "if"
+  expr <- parseExpr''
   ins  <- parseSeq
   ins' <- parseSeq
   return $ If expr ins ins'
 
 parseWhile :: Parser String String LAst
 parseWhile = do
-  symbols "while("
-  expr <- parseExpr'
-  symbols ")"
+  symbols "while"
+  expr <- parseExpr''
   ins  <- parseSeq
   return $ While expr ins
 
 parseAssign :: Parser String String LAst
 parseAssign = do
-  symbols "bind("
-  var  <- parseVar
-  symbols ")("
-  expr <- parseExpr'
-  symbol ')'
+  symbols "bind"
+  var  <- parseVar'
+  expr <- parseExpr''
   return $ Assign var expr
 
 parseRead :: Parser String String LAst
 parseRead = do
-  symbols "read("
-  var <- parseVar
-  symbol ')'
+  symbols "read"
+  var <- parseVar'
   return $ Read var
 
 parseWrite :: Parser String String LAst
 parseWrite = do
-  symbols "write("
-  expr <- parseExpr'
-  symbol ')'
+  symbols "write"
+  expr <- parseExpr''
   return $ Write expr
 
 parseSeq :: Parser String String LAst
 parseSeq = do
+  manySpaces
   symbols "./"
-  ins <- many (parseIns <* symbol ';')
+  manySpaces
+  ins <- many (parseIns <* manySpaces <* symbol ';' <* manySpaces)
   symbols "\\."
   return $ Seq ins
 
@@ -138,8 +151,8 @@ parseIns :: Parser String String LAst
 parseIns = parseIf <|> parseWhile <|> parseAssign <|> parseRead <|> parseWrite <|> parseSeq
 
 exprVars :: Expr -> [Var]
-exprVars (Num _)     = []
-exprVars (Ident x) = [x]
+exprVars (Num _)              = []
+exprVars (Ident x)            = [x]
 exprVars (UnaryOp _ expr)     = exprVars expr
 exprVars (BinOp _ expr expr') = exprVars expr ++ exprVars expr'
 
@@ -182,14 +195,10 @@ goodVars ast =
   in
     isJust (dfs ast [])
 
-deleteSpaces :: (Parser String String LAst) -> (Parser String String LAst)
-deleteSpaces p = Parser $ runParser p . deleteSpaces'
-deleteSpaces' = concat . words
-
 parseL :: Parser String String LAst
 parseL = Parser $ \str ->
   let
-    short = runParser parseSeq $ deleteSpaces' str
+    short = runParser parseSeq str
   in
     case short of
       this@(Success _ ast) ->
