@@ -1,10 +1,11 @@
 module Expr where
 
-import AST (AST (..), Operator (..))
+import AST (AST (..), Operator (..), Subst)
 import Combinators (Parser (..), Result (..), elem', fail',
                     satisfy, success, satisfy, symbol, symbols)
 import Data.Char (digitToInt, isDigit, isLetter)
 import Control.Applicative
+import qualified Data.Map as Map
 
 data Associativity
   = LeftAssoc  -- 1 @ 2 @ 3 @ 4 = (((1 @ 2) @ 3) @ 4)
@@ -13,6 +14,17 @@ data Associativity
 
 data OpType = Binary Associativity
             | Unary
+
+evalExpr :: Subst -> AST -> Maybe Int
+evalExpr _     (Num x)        = Just x
+evalExpr subst (Ident x)      = Map.lookup x subst
+evalExpr subst (UnaryOp op x) = do
+                                z <- evalExpr subst x
+                                return $ compute $ UnaryOp op (Num z)
+evalExpr subst (BinOp op x y) = do
+                                z <- evalExpr subst x
+                                t <- evalExpr subst y
+                                return $ compute $ BinOp op (Num z) (Num t)
 
 uberExpr :: Monoid e
          => [(Parser e i op, OpType)] -- список операций с их арностью и, в случае бинарных, ассоциативностью
@@ -146,10 +158,10 @@ compute (BinOp Div x y)   = compute x `div` compute y
 compute (BinOp Pow x y)   = compute x ^ compute y
 compute (BinOp Equal x y)  = boolToInt $ compute x == compute y
 compute (BinOp Nequal x y) = boolToInt $ compute x /= compute y
+compute (BinOp Gt x y)     = boolToInt $ compute x > compute y
 compute (BinOp Le x y)     = boolToInt $ compute x <= compute y
-compute (BinOp Gt x y)     = boolToInt $ compute x < compute y
 compute (BinOp Ge x y)     = boolToInt $ compute x >= compute y
-compute (BinOp Lt x y)     = boolToInt $ compute x > compute y
+compute (BinOp Lt x y)     = boolToInt $ compute x < compute y
 compute (UnaryOp Not x)    = case compute x of
                                 0 -> 1
                                 _ -> 0

@@ -4,7 +4,7 @@ import AST (AST (..), Operator (..), Subst)
 import Combinators (Parser (..), Result (..), elem', fail',
                     satisfy, success, symbol, symbols)
 import Expr (Associativity (..), OpType (..), parseNum,
-             toOperator, parseOp, uberExpr)
+             toOperator, parseOp, evalExpr, uberExpr)
 import Data.Char (isDigit, isLetter, isSpace)
 import Control.Applicative
 import Control.Monad (guard)
@@ -215,4 +215,31 @@ initialConf :: [Int] -> Configuration
 initialConf input = Conf Map.empty input []
 
 eval :: LAst -> Configuration -> Maybe Configuration
-eval = error "eval not defined"
+eval (If cond ins ins') conf@(Conf subst in' out') = do
+  res <- evalExpr subst cond
+  case res of
+    0 -> eval ins' conf
+    _ -> eval ins  conf
+eval loop@(While cond body) conf@(Conf subst in' out') = do
+  res <- evalExpr subst cond
+  case res of
+    0 -> return conf
+    _ -> do
+      res' <- eval body conf
+      eval loop res'
+eval (Assign var expr) (Conf subst in' out') = do
+  res <- evalExpr subst expr
+  return $ Conf (Map.insert var res subst) in' out'
+eval (Read var) (Conf subst in' out') =
+  case in' of
+    (x:xs) -> return $ Conf (Map.insert var x subst) xs out'
+    _      -> Nothing
+eval (Write expr) (Conf subst in' out') = do
+  res <- evalExpr subst expr
+  return $ Conf subst in' (res:out')
+eval (Seq instructions) conf =
+  case instructions of
+    (x:xs) -> do
+      res <- eval x conf
+      eval (Seq xs) res
+    _      -> Just conf
