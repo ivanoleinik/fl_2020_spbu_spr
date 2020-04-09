@@ -149,6 +149,7 @@ parseSeq = do
   manySpaces
   ins <- many (parseIns <* manySpaces <* symbol ';' <* manySpaces)
   symbols "\\."
+  manySpaces
   return $ Seq ins
 
 parseIns :: Parser String String LAst

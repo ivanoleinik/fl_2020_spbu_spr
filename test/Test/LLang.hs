@@ -147,7 +147,7 @@ unit_parseSeq :: Assertion
 unit_parseSeq = do
   runParser parseSeq "./\\." @?= Success "" (Seq [])
   runParser parseSeq "././\\.;././\\.;./\\.;\\.;\\.\n\n\n" @?=
-    Success "\n\n\n" (Seq [Seq [], Seq[Seq[], Seq []]])
+    Success "" (Seq [Seq [], Seq[Seq[], Seq []]])
   runParser parseSeq "./ bind a (4*5); \\." @?=
     Success "" (Seq [ Assign "a" (BinOp Mult (Num 4) (Num 5))])
   assertBool "" $ isFailure (runParser parseSeq "./;\\.")

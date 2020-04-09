@@ -69,10 +69,10 @@
      read a;
      bind b (1+2*3);
      bind result (0);
-     while (a > b)
+     while (a>b)
      ./
-       bind result (result + 10);
-       bind a (a - 1);
+       bind result (result+10);
+       bind a (a-1);
      \.;
      write (result);
    \.`
