@@ -1,6 +1,6 @@
 module LLang where
 
-import AST (AST (..), Operator (..))
+import AST (AST (..), Operator (..), Subst)
 import Combinators (Parser (..), Result (..), elem', fail',
                     satisfy, success, symbol, symbols)
 import Expr (Associativity (..), OpType (..), parseNum,
@@ -9,10 +9,14 @@ import Data.Char (isDigit, isLetter, isSpace)
 import Control.Applicative
 import Control.Monad (guard)
 import Data.Maybe
+import qualified Data.Map as Map
 
 type Expr = AST
 
 type Var = String
+
+data Configuration = Conf { subst :: Subst, input :: [Int], output :: [Int] }
+                   deriving (Show, Eq)
 
 data LAst
   = If { cond :: Expr, thn :: LAst, els :: LAst }
@@ -206,3 +210,9 @@ parseL = Parser $ \str ->
           True -> this
           _    -> Failure "Unassigned variable"
       _        -> short
+
+initialConf :: [Int] -> Configuration
+initialConf input = Conf Map.empty input []
+
+eval :: LAst -> Configuration -> Maybe Configuration
+eval = error "eval not defined"
