@@ -1,11 +1,11 @@
 module Expr where
 
-import AST (AST (..), Operator (..), Subst)
-import Combinators (Parser (..), Result (..), elem', fail',
-                    satisfy, success, satisfy, symbol, symbols)
-import Data.Char (digitToInt, isDigit, isLetter)
-import Control.Applicative
-import qualified Data.Map as Map
+import           AST                 (AST (..), Operator (..), Subst (..))
+import           Combinators         (Parser (..), Result (..), elem', fail',
+                                      runParser, satisfy, stream, success, symbol, symbols)
+import           Control.Applicative
+import           Data.Char           (digitToInt, isDigit, isLetter)
+import qualified Data.Map            as Map
 
 data Associativity
   = LeftAssoc  -- 1 @ 2 @ 3 @ 4 = (((1 @ 2) @ 3) @ 4)
@@ -141,8 +141,8 @@ toOperator _    = fail' "Failed toOperator"
 evaluate :: String -> Maybe Int
 evaluate input = do
   case runParser parseExpr input of
-    Success rest ast | null rest -> return $ compute ast
-    _                            -> Nothing
+    Success rest ast | null (stream rest) -> return $ compute ast
+    _                                     -> Nothing
 
 boolToInt :: Bool -> Int
 boolToInt True = 1
