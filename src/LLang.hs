@@ -2,7 +2,8 @@ module LLang where
 
 import AST (AST (..), Operator (..), Subst)
 import Combinators (Parser (..), Result (..), elem', fail',
-                    satisfy, success, symbol, symbols)
+                    satisfy, success, symbol, symbols, curPos,
+                    makeError, runParser)
 import Expr (Associativity (..), OpType (..), parseNum,
              toOperator, parseOp, evalExpr, uberExpr)
 import Data.Char (isDigit, isLetter, isSpace)
@@ -20,9 +21,9 @@ type Var = String
 data Configuration = Conf { subst :: Subst, input :: [Int], output :: [Int] }
                    deriving (Show, Eq)
 
-data Program = Program { functions :: [Function], main :: LAst }
+data Program = Program { functions :: [Function], main :: LAst } deriving Eq
 
-data Function = Function { name :: String, args :: [Var], funBody :: LAst }
+data Function = Function { name :: String, args :: [Var], funBody :: LAst } deriving Eq
 
 data LAst
   = If { cond :: Expr, thn :: LAst, els :: LAst }
@@ -72,14 +73,32 @@ parseIdent' = do
   return (x ++ y ++ z)
 
 keywords :: [String]
-keywords = ["if", "while", "bind", "read", "write"]
+keywords = ["if", "while", "bind", "read", "write", "fun", "up"]
 
 parseVar :: Parser String String String
 parseVar = do
   var <- parseIdent'
-  guard $ length var <= 10
+  guard $ length var <= 70
   guard $ notElem var keywords
   return var
+
+someSpaces = some $ satisfy isSpace
+manySpaces = many $ satisfy isSpace
+
+parseFunctionCall :: Parser String String AST
+parseFunctionCall = do
+  name <- parseVar
+  manySpaces
+  symbol '('
+  args <- getArgs <|> return []
+  symbol ')'
+  return $ FunctionCall name args
+  where
+    getArgs = do
+      x <- parseExpr'
+      xs <- many $ symbol ',' *> parseExpr'
+      return (x:xs)
+
 
 parseExpr' :: Parser String String AST
 parseExpr' = uberExpr [ (or', Binary RightAssoc)
@@ -91,15 +110,15 @@ parseExpr' = uberExpr [ (or', Binary RightAssoc)
                       , (minus, Unary)
                       , (pow, Binary RightAssoc)
                       ]
-                      (Num   <$> parseNum <|>
-                       Ident <$> parseVar <|>
-                       symbol '(' *> parseExpr' <* symbol ')'
-                      )
+                      (manySpaces *>
+                        (Num   <$> parseNum <|>
+                         parseFunctionCall  <|>
+                         Ident <$> parseVar <|>
+                         symbol '(' *> parseExpr' <* symbol ')'
+                        )
+                      <* manySpaces)
                       BinOp
                       UnaryOp
-
-someSpaces = some $ satisfy isSpace
-manySpaces = many $ satisfy isSpace
 
 parseVar' = do
   someSpaces
@@ -109,9 +128,7 @@ parseVar' = do
 parseExpr'' = do
   manySpaces
   symbol '('
-  manySpaces
   expr <- parseExpr'
-  manySpaces
   symbol ')'
   return expr
 
@@ -159,17 +176,24 @@ parseSeq = do
   manySpaces
   return $ Seq ins
 
+parseReturn :: Parser String String LAst
+parseReturn = do
+    symbols "up"
+    expr <- parseExpr''
+    return $ Return expr
+
 parseIns :: Parser String String LAst
-parseIns = parseIf <|> parseWhile <|> parseAssign <|> parseRead <|> parseWrite <|> parseSeq
+parseIns = parseIf <|> parseWhile <|> parseAssign <|> parseRead <|> parseWrite <|> parseSeq <|> parseReturn
 
 exprVars :: Expr -> [Var]
-exprVars (Num _)              = []
-exprVars (Ident x)            = [x]
-exprVars (UnaryOp _ expr)     = exprVars expr
-exprVars (BinOp _ expr expr') = exprVars expr ++ exprVars expr'
+exprVars (Num _)               = []
+exprVars (Ident x)             = [x]
+exprVars (UnaryOp _ expr)      = exprVars expr
+exprVars (BinOp _ expr expr')  = exprVars expr ++ exprVars expr'
+exprVars (FunctionCall _ args) = concat $ exprVars <$> args
 
-goodVars :: LAst -> Bool
-goodVars ast =
+goodVars :: LAst -> [Var] -> Bool
+goodVars ast args =
   let
     in' vars vars' = all (\var -> elem var vars') vars
     dfs (If cond ins ins') vars =
@@ -204,26 +228,46 @@ goodVars ast =
         f Nothing ins = Nothing
       in
         foldl f (Just vars) instructions
+    dfs (Return expr) vars =
+      case in' (exprVars expr) vars of
+        True -> Just vars
+        _    -> Nothing
   in
-    isJust (dfs ast [])
+    isJust (dfs ast args)
 
 parseL :: Parser String String LAst
-parseL = Parser $ \str ->
+parseL = parseL' []
+
+parseL' :: [Var] -> Parser String String LAst
+parseL' args = Parser $ \str ->
   let
-    short = runParser parseSeq str
+    short = runParser' parseSeq str
   in
     case short of
       this@(Success _ ast) ->
-        case goodVars ast of
+        case goodVars ast args of
           True -> this
-          _    -> Failure "Unassigned variable"
+          _    -> Failure [makeError "Unassigned variable" (curPos str)]
       _        -> short
 
-parseDef :: Parser String String Function
-parseDef = error "parseDef undefined"
+addDefaultReturn :: LAst -> LAst
+addDefaultReturn (Seq ins) = Seq (ins ++ [Return (Num 0)])
 
-parseProg :: Parser String String Prog
-parseProg = error "parseProg undefined"
+parseDef :: Parser String String Function
+parseDef = do
+  manySpaces
+  symbols "fun"
+  name <- parseVar'
+  symbol ':'
+  args <- many parseVar'
+  body <- parseL' args
+  return $ Function name args $ addDefaultReturn body
+
+parseProg :: Parser String String Program
+parseProg = do
+  functions <- many parseDef
+  main <- parseL
+  return $ Program functions main
 
 initialConf :: [Int] -> Configuration
 initialConf input = Conf Map.empty input []

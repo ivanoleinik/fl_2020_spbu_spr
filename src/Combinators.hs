@@ -54,7 +54,7 @@ instance Monad (Parser error input) where
   return = pure
   (Parser rp) >>= f = Parser $ \input ->
     case rp input of
-      Success input' x -> runParser (f x) input'
+      Success input' x -> runParser' (f x) input'
       Failure e        -> Failure e
 
 instance Monoid error => Alternative (Parser error input) where
