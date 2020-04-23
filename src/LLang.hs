@@ -5,7 +5,8 @@ import Combinators (Parser (..), Result (..), elem', fail',
                     satisfy, success, symbol, symbols, curPos,
                     makeError, runParser)
 import Expr (Associativity (..), OpType (..), parseNum,
-             toOperator, parseOp, evalExpr, uberExpr)
+             toOperator, parseOp, uberExpr, compute,
+             evalUnaryOp, evalBinOp)
 import Data.Char (isDigit, isLetter, isSpace)
 import Control.Applicative
 import Control.Monad (guard)
@@ -35,7 +36,6 @@ data LAst
   | Read { var :: Var }
   | Write { expr :: Expr }
   | Seq { statements :: [LAst] }
-  | Return { expr :: Expr }
   deriving (Eq)
 
 stmt :: LAst
@@ -179,14 +179,15 @@ parseSeq = do
   manySpaces
   return $ Seq ins
 
-parseReturn :: Parser String String LAst
+parseReturn :: Parser String String Expr
 parseReturn = do
-    symbols "up"
-    expr <- parseExpr''
-    return $ Return expr
+  manySpaces
+  symbols "up"
+  expr <- parseExpr''
+  return expr
 
 parseIns :: Parser String String LAst
-parseIns = parseIf <|> parseWhile <|> parseAssign <|> parseRead <|> parseWrite <|> parseSeq <|> parseReturn
+parseIns = parseIf <|> parseWhile <|> parseAssign <|> parseRead <|> parseWrite <|> parseSeq
 
 exprVars :: Expr -> [Var]
 exprVars (Num _)               = []
@@ -195,48 +196,42 @@ exprVars (UnaryOp _ expr)      = exprVars expr
 exprVars (BinOp _ expr expr')  = exprVars expr ++ exprVars expr'
 exprVars (FunctionCall _ args) = concat $ exprVars <$> args
 
-goodVars :: LAst -> [Var] -> Bool
-goodVars ast args =
-  let
-    in' vars vars' = all (\var -> elem var vars') vars
-    dfs (If cond ins ins') vars =
-      case in' (exprVars cond) vars &&
-           isJust (dfs ins  vars)  &&
-           isJust (dfs ins' vars) of
-        True -> Just vars
-        _    -> Nothing
-    dfs (While cond body) vars =
-      case in' (exprVars cond) vars &&
-           isJust (dfs body vars) of
-        True -> Just vars
-        _    -> Nothing
-    dfs (Assign var expr) vars =
-      case in' (exprVars expr) vars of
-        True -> Just $
-          case elem var vars of
-            True -> vars
-            _    -> (var:vars)
-        _    -> Nothing
-    dfs (Read var) vars = Just $
+in' :: [Var] -> [Var] -> Bool 
+in' vars vars' = all (\var -> elem var vars') vars
+
+goodVars :: LAst -> [Var] -> Maybe [Var]
+goodVars (If cond ins ins') vars =
+  case in' (exprVars cond) vars &&
+       isJust (goodVars ins  vars)  &&
+       isJust (goodVars ins' vars) of
+    True -> Just vars
+    _    -> Nothing
+goodVars (While cond body) vars =
+  case in' (exprVars cond) vars &&
+       isJust (goodVars body vars) of
+    True -> Just vars
+    _    -> Nothing
+goodVars (Assign var expr) vars =
+  case in' (exprVars expr) vars of
+    True -> Just $
       case elem var vars of
         True -> vars
         _    -> (var:vars)
-    dfs (Write expr) vars =
-      case in' (exprVars expr) vars of
-        True -> Just vars
-        _    -> Nothing
-    dfs (Seq instructions) vars =
-      let
-        f (Just vars) ins = dfs ins vars
-        f Nothing ins = Nothing
-      in
-        foldl f (Just vars) instructions
-    dfs (Return expr) vars =
-      case in' (exprVars expr) vars of
-        True -> Just vars
-        _    -> Nothing
+    _    -> Nothing
+goodVars (Read var) vars = Just $
+  case elem var vars of
+    True -> vars
+    _    -> (var:vars)
+goodVars (Write expr) vars =
+  case in' (exprVars expr) vars of
+    True -> Just vars
+    _    -> Nothing
+goodVars (Seq instructions) vars =
+  let
+    f (Just vars) ins = goodVars ins vars
+    f Nothing ins = Nothing
   in
-    isJust (dfs ast args)
+    foldl f (Just vars) instructions
 
 parseL :: Parser String String LAst
 parseL = parseL' []
@@ -248,13 +243,10 @@ parseL' args = Parser $ \str ->
   in
     case short of
       this@(Success _ ast) ->
-        case goodVars ast args of
+        case isJust (goodVars ast args) of
           True -> this
           _    -> Failure [makeError "Unassigned variable" (curPos str)]
       _        -> short
-
-addDefaultReturn :: LAst -> LAst
-addDefaultReturn (Seq ins) = Seq (ins ++ [Return (Num 0)])
 
 parseDef :: Parser String String Function
 parseDef = do
@@ -264,40 +256,94 @@ parseDef = do
   symbol ':'
   args <- many parseVar'
   body <- parseL' args
-  return $ Function name args $ addDefaultReturn body
+  res <- parseReturn
+  return $ Function name args body res
+
+-- улучшенная версия parseDef, которая проверяет функцию на корректность при использовании переменных
+goodDef :: Parser String String Function
+goodDef = Parser $ \str ->
+  let
+    short = runParser' parseDef str
+  in
+    case short of
+      this@(Success _ def) ->
+        let
+          res = returnExpr def
+          body = funBody def
+          args' = args def
+        in
+          case in' (exprVars $ res) (fromMaybe [] $ goodVars body args') of
+            True -> this
+            _    -> Failure [makeError "Unassigned variable" (curPos str)]
+      _          -> short
+
 
 parseProg :: Parser String String Program
 parseProg = do
-  functions <- many parseDef
+  functions <- many goodDef
   main <- parseL
   return $ Program functions main
 
 initialConf :: [Int] -> Configuration
-initialConf input = Conf Map.empty input []
+initialConf input = Conf Map.empty input [] Map.empty
+
+evalFunction :: Configuration -> Function -> [Int] -> Maybe (Configuration, Int)
+evalFunction (Conf subst in' out' def) (Function _ args (Seq ins) res) value =
+  case eval (Seq $ ins ++ [Write res]) (Conf (Map.fromList $ zip args value) in' out' def) of
+    Just (Conf _ in' (res:out'') _) -> Just (Conf subst in' out'' def, res)
+    _                                -> Nothing
+evalFunction conf (Function name args ins res) value =
+  evalFunction conf (Function name args (Seq [ins]) res) value
+
+evalExpr :: Configuration -> AST -> Maybe (Configuration, Int)
+evalExpr conf (Num x) = Just (conf, x)
+evalExpr conf@(Conf subst _ _ _) (Ident x) = (,) conf <$> Map.lookup x subst
+evalExpr conf (UnaryOp op x) = do
+                               (conf', z) <- evalExpr conf x
+                               return $ (conf', evalUnaryOp op z)
+evalExpr conf (BinOp op x y) = do
+                               (conf', z)  <- evalExpr conf x
+                               (conf'', t) <- evalExpr conf' y
+                               return $ (conf'', evalBinOp op z t)
+evalExpr conf@(Conf _ _ _ def) (FunctionCall name args) =
+  let
+    res = foldl f (Just (conf, [])) args
+      where
+        f var expr = do
+          (conf', rest) <- var
+          (conf'', res) <- evalExpr conf' expr
+          return $ (conf'', rest ++ [res])
+  in
+    do
+      (conf'@(Conf subst _ _ def'), value) <- res
+      f <- Map.lookup name def
+      (Conf _ in' out' def', res') <- evalFunction conf' f value
+      return $ (Conf subst in' out' def', res')
+
 
 eval :: LAst -> Configuration -> Maybe Configuration
-eval (If cond ins ins') conf@(Conf subst in' out') = do
-  res <- evalExpr subst cond
+eval (If cond ins ins') conf = do
+  (conf', res) <- evalExpr conf cond
   case res of
-    0 -> eval ins' conf
-    _ -> eval ins  conf
-eval loop@(While cond body) conf@(Conf subst in' out') = do
-  res <- evalExpr subst cond
+    0 -> eval ins' conf'
+    _ -> eval ins  conf'
+eval loop@(While cond body) conf = do
+  (conf', res) <- evalExpr conf cond
   case res of
-    0 -> return conf
+    0 -> return conf'
     _ -> do
-      res' <- eval body conf
+      res' <- eval body conf'
       eval loop res'
-eval (Assign var expr) (Conf subst in' out') = do
-  res <- evalExpr subst expr
-  return $ Conf (Map.insert var res subst) in' out'
-eval (Read var) (Conf subst in' out') =
+eval (Assign var expr) conf = do
+  (Conf subst in' out' def, res) <- evalExpr conf expr
+  return $ Conf (Map.insert var res subst) in' out' def
+eval (Read var) (Conf subst in' out' def) =
   case in' of
-    (x:xs) -> return $ Conf (Map.insert var x subst) xs out'
+    (x:xs) -> return $ Conf (Map.insert var x subst) xs out' def
     _      -> Nothing
-eval (Write expr) (Conf subst in' out') = do
-  res <- evalExpr subst expr
-  return $ Conf subst in' (res:out')
+eval (Write expr) conf = do
+  (Conf subst in' out' def, res) <- evalExpr conf expr
+  return $ Conf subst in' (res:out') def
 eval (Seq instructions) conf =
   case instructions of
     (x:xs) -> do

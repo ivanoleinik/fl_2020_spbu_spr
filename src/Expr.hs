@@ -15,17 +15,6 @@ data Associativity
 data OpType = Binary Associativity
             | Unary
 
-evalExpr :: Subst -> AST -> Maybe Int
-evalExpr _     (Num x)        = Just x
-evalExpr subst (Ident x)      = Map.lookup x subst
-evalExpr subst (UnaryOp op x) = do
-                                z <- evalExpr subst x
-                                return $ compute $ UnaryOp op (Num z)
-evalExpr subst (BinOp op x y) = do
-                                z <- evalExpr subst x
-                                t <- evalExpr subst y
-                                return $ compute $ BinOp op (Num z) (Num t)
-
 uberExpr :: Monoid e
          => [(Parser e i op, OpType)] -- список операций с их арностью и, в случае бинарных, ассоциативностью
          -> Parser e i ast            -- парсер элементарного выражения
@@ -169,5 +158,11 @@ compute (BinOp And x y)    = case compute x of
                                 0 -> 0
                                 _ -> compute y
 compute (BinOp Or x y)     = case compute x of
-                                0 -> compute y
-                                x -> x
+                                1 -> 1
+                                _ -> compute y
+
+evalUnaryOp :: Operator -> Int -> Int
+evalUnaryOp op x = compute $ UnaryOp op (Num x)
+
+evalBinOp :: Operator -> Int -> Int -> Int
+evalBinOp op x y = compute $ BinOp op (Num x) (Num y)

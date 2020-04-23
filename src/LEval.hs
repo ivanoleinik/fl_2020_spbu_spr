@@ -1,9 +1,18 @@
 module LEval where
 
-import LLang (Program (..), Configuration (..))
+import Combinators (Result (..), InputStream (..), runParser)
+import LLang (Program (..), Configuration (..), Function (..), eval, parseProg)
+import qualified Data.Map as Map
 
 evalProg :: Program -> [Int] -> Maybe Configuration
-evalProg = error "evalProg not implemented"
+evalProg (Program functions main) inp =
+  eval main               $
+    Conf Map.empty inp [] $
+      Map.fromList        $
+        (\f -> (name f, f)) <$> functions
 
 parseAndEvalProg :: String -> [Int] -> Maybe Configuration
-parseAndEvalProg = error "parseAndEvalProg not implemented"
+parseAndEvalProg prog inp =
+  case runParser parseProg prog of
+    Success (InputStream _ _) res -> evalProg res inp
+    _                             -> Nothing
