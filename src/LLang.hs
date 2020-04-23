@@ -18,12 +18,15 @@ type Expr = AST
 
 type Var = String
 
-data Configuration = Conf { subst :: Subst, input :: [Int], output :: [Int] }
+data Configuration = Conf { subst :: Subst, input :: [Int], output :: [Int], defs :: Defs }
                    deriving (Show, Eq)
+
+type Defs = Map.Map String Function
 
 data Program = Program { functions :: [Function], main :: LAst } deriving Eq
 
-data Function = Function { name :: String, args :: [Var], funBody :: LAst } deriving Eq
+data Function = Function { name :: String, args :: [Var], funBody :: LAst, returnExpr :: Expr }
+              deriving (Eq)
 
 data LAst
   = If { cond :: Expr, thn :: LAst, els :: LAst }
@@ -303,8 +306,8 @@ eval (Seq instructions) conf =
     _      -> Just conf
 
 instance Show Function where
-  show (Function name args funBody) =
-    printf "%s(%s) =\n%s" name (intercalate ", " $ map show args) (unlines $ map (identation 1) $ lines $ show funBody)
+  show (Function name args funBody returnExpr) =
+    printf "%s(%s) =\n%s\n%s" name (intercalate ", " $ map show args) (unlines $ map (identation 1) $ lines $ show funBody) (identation 1 ("return " ++ show returnExpr))
 
 instance Show Program where
   show (Program defs main) =
@@ -323,7 +326,6 @@ instance Show LAst where
           Read var        -> makeIdent $ printf "read %s" var
           Write expr      -> makeIdent $ printf "write %s" (flatShowExpr expr)
           Seq stmts       -> intercalate "\n" $ map (go n) stmts
-          Return expr     -> makeIdent $ printf "return %s" (flatShowExpr expr)
       flatShowExpr (BinOp op l r) = printf "(%s %s %s)" (flatShowExpr l) (show op) (flatShowExpr r)
       flatShowExpr (UnaryOp op x) = printf "(%s %s)" (show op) (flatShowExpr x)
       flatShowExpr (Ident x) = x
