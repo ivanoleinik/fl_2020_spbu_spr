@@ -263,7 +263,7 @@ unit_Position = do
     Success (toStream "" (Position 3 0))
     (Seq [Seq [], Seq[Seq[], Seq []]])
   runParser parseL "\n./ bind \na (10\n); \\.\n \t" @?=
-    Success (toStream "" (Position 4 5))
+    Success (toStream "" (Position 4 4))
     (Seq [Assign "a" (Num 10)])
   runParser parseL "./\twrite\n(1^2); \\." @?=
     Success (toStream "" (Position 1 9))

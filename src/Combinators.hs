@@ -39,7 +39,8 @@ toStream = InputStream
 
 incrPos :: Position -> Char -> Position
 incrPos (Position line col) '\n' = Position (line + 1)  0
-incrPos (Position line col) '\t' = Position line (col + 4)
+incrPos (Position line col) '\t' = Position line (col + delta)
+  where delta = 4 - mod col 4
 incrPos (Position line col) _    = Position line (col + 1)
 
 instance Functor (Parser error input) where
