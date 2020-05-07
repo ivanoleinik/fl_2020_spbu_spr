@@ -1,7 +1,17 @@
- 
+
 .stack-work/
 
-fl2020-spbu-spr.cabal
+src/Lex.hs
+
+src/LexStmt.hs
+
+src/Parser.hs
+
+src/ParserAst.hs
+
+src/ParserStmts.hs
+
+src/SimpleLex.hs
 
 stack.yaml
 
