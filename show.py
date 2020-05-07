@@ -14,7 +14,6 @@ def show(grammar):
         print(log)
     else:
         terms, nonterms, rules, _ = grammar
-        print(grammar)
 
         sys.stdout.write(GREEN)
         print("Parsing succeeded!")
