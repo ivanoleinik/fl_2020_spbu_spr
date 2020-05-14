@@ -1,2 +1,7 @@
-.idea
-.pytest_cache
+ 
+
+.stack-work/
+
+stack.yaml
+
+stack.yaml.lock
