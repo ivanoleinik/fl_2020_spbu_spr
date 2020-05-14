@@ -1,0 +1,86 @@
+\documentclass[12pt]{article}
+\usepackage[left=1.5cm,right=1.5cm,top=2cm,bottom=2cm,bindingoffset=0cm]{geometry}
+\usepackage[utf8x]{inputenc}
+\usepackage[english,russian]{babel}
+\usepackage{cmap}
+\usepackage{amssymb}
+\usepackage{amsmath}
+\usepackage{url}
+\usepackage{pifont}
+\usepackage{tikz}
+\usepackage{verbatim}
+\usepackage[thmmarks, amsmath, thref]{ntheorem}
+
+\theoremstyle{nonumberplain}
+\theoremheaderfont{\itshape}
+\theorembodyfont{\upshape}
+\theoremseparator{.}
+\theoremsymbol{\ensuremath{\square}}
+\newtheorem{lemm}{\underline{\textbf{Lemm}}}
+\newtheorem{proof}{\underline{\textbf{Proof}}}
+\theoremsymbol{\ensuremath{\blacksquare}}
+\newtheorem{solution}{\underline{\textbf{Solution}}}
+\theoremseparator{. ---}
+\theoremsymbol{\mbox{\texttt{;o)}}}
+\newtheorem{varsol}{Solution (variant)}
+
+\usetikzlibrary{shapes,arrows}
+\usetikzlibrary{positioning,automata}
+\tikzset{every state/.style={minimum size=0.2cm},
+initial text={}
+}
+
+
+\newenvironment{myauto}[1][3]
+{
+  \begin{center}
+    \begin{tikzpicture}[> = stealth,node distance=#1cm, on grid, very thick]
+}
+{
+    \end{tikzpicture}
+  \end{center}
+}
+
+
+\begin{document}
+\begin{center} {\LARGE Формальные языки} \end{center}
+
+\begin{center} \Large домашнее задание до 23:59 14.05 \end{center}
+\bigskip
+
+\begin{enumerate}
+	\setcounter{enumi}{1}
+	\item Построить однозначную КС грамматику, эквивалетную грамматике\\ $\texttt{S} \rightarrow\texttt{aSbbbb | aaaSbb | c}$.
+	\begin{solution}\
+		Заметим, что грамматика
+		$\begin{cases}
+			\texttt{S $\rightarrow$ aSbbbb | R}\\
+   			\texttt{R $\rightarrow$ aaaSbb | c}\\
+		\end{cases}$ эквивалентна исходной, так как результат не зависит от порядка применения правил. Рассмотрим слово $a^p c b^q$ из языка грамматики. Заметим, что $p = x + 3y$ и $q = 4x + 2y$, где $x$ и $y$ -- количества применений первого и второго правил соответственно. Эта система совместна и имеет единственное решение:
+		 $\begin{cases}
+			$$x = \frac{3q - 2p}{10}$$\\
+   			$$y = \frac{4p - q}{10}$$\\
+		\end{cases}$ Значит, грамматика однозначна.
+	\end{solution}
+	\item Описать язык, порождаемый грамматикой $\texttt{F} \rightarrow \varepsilon \texttt{ | aFaFbF}$
+	\begin{solution}\ 
+		Эта грамматика порождает язык, слова которого состоят только из букв \texttt{a} и \texttt{b}, причем всего букв \texttt{a} в слове ровно в 2 раза больше, чем букв \texttt{b} (следует из правила), и в любом префиксе слова букв \texttt{a} хотя бы в 2 раза больше, чем букв \texttt{b} (также следует из правила).
+	\end{solution}
+	\item Найти КС грамматику, порождающую пересечение языка, порождаемого грамматикой\\ $\texttt{F} \rightarrow \texttt{a | bF | cFF}$ с языком, порождаемым грамматикой
+		$\begin{cases}
+			\texttt{K $\rightarrow$ aM | cM}\\
+			\texttt{M $\rightarrow$ aK | bK | $\varepsilon$}\\
+		\end{cases}$
+	\begin{solution}\ 
+		Заметим, что в языке второй грамматики длина слов нечетная, потому что правила будут чередоваться, и мы закончим на применении второго. Также слова могут начинаться только на буквы \texttt{a} и \texttt{c}, и не может встретится подстрок \texttt{bb} и \texttt{cc}, то есть в слове из языка буквы \texttt{b} могут стоять только на чётных местах, а буквы \texttt{с} на нечётных. Преобразуем первую грамматику в соответствии с ограничениями:\\
+		$\begin{cases}
+			\texttt{EVEN$_b$ $\rightarrow$ b ODD$_c$}\\
+			\texttt{ODD$_b$ $\rightarrow$ a | b EVEN$_c$}\\
+			\texttt{EVEN$_c$ $\rightarrow$ c EVEN$_b$ ODD$_b$ | c ODD$_b$ EVEN$_c$}\\
+			\texttt{ODD$_c$ $\rightarrow$ a | c EVEN$_b$ EVEN$_b$ | c ODD$_b$ ODD$_c$}\\
+		\end{cases}$
+	\end{solution}
+\end{enumerate}
+
+
+\end{document}
